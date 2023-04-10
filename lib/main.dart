@@ -12,20 +12,20 @@ void main() {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    final remoteConfig = FirebaseRemoteConfig.instance;
-    await remoteConfig.setConfigSettings(RemoteConfigSettings(
-      fetchTimeout: const Duration(minutes: 1),
-      minimumFetchInterval: const Duration(hours: 1),
-    ));
     runApp(const MyApp());
   }, (e, s) {
     debugPrint(e.toString());
   });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -61,27 +61,77 @@ class MyHomePage extends StatefulWidget {
   // always marked "final".
 
   final String title;
+  final String memeImage =
+      "https://i.kym-cdn.com/entries/icons/original/000/030/157/womanyellingcat.jpg";
+  final String upgradeText = "Please upgrade";
+  final String okText = "Ok";
+  final String metMinVersion =
+      "This version is equal or above minimum app version";
+  final String checkNewVersion = "Check for new version";
+  final double versionNumber = 1.0;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final _remoteConfig = FirebaseRemoteConfig.instance;
+  double _minVersion = 0;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  Future<void> _initConfig() async {
+    await _remoteConfig.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 1),
+      minimumFetchInterval: const Duration(seconds: 10),
+    ));
+    _fetchConfig();
+  }
+
+  void _fetchConfig() async {
+    await _remoteConfig.fetchAndActivate();
+  }
+
+  @override
+  void initState() {
+    _initConfig();
+    super.initState();
+  }
+
+  checkAppVersion() {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(
+              _minVersion > widget.versionNumber
+                  ? widget.upgradeText
+                  : widget.metMinVersion,
+              textAlign: TextAlign.center,
+            ),
+            content: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.grey,
+                backgroundColor: Colors.grey,
+                side: const BorderSide(
+                  color: Colors.grey,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                widget.okText,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            alignment: Alignment.center,
+          );
+        });
   }
 
   @override
   Widget build(BuildContext context) {
+    _minVersion = _remoteConfig.getDouble('min_version');
+    // debugPrint(_minVersion.toString());
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
@@ -114,21 +164,32 @@ class _MyHomePageState extends State<MyHomePage> {
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            if (widget.versionNumber >= _minVersion)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Image.network(widget.memeImage),
+              ),
+            const SizedBox(
+              height: 10,
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.grey,
+                backgroundColor: Colors.grey,
+                side: const BorderSide(
+                  color: Colors.grey,
+                ),
+              ),
+              onPressed: (() => checkAppVersion()),
+              child: Text(
+                widget.checkNewVersion,
+                style: const TextStyle(color: Colors.white),
+              ),
+            )
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
